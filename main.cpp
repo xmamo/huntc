@@ -12,7 +12,7 @@
 
 struct Association {
   std::string normalized_type;
-  std::string file;
+  std::string file_name;
   unsigned line;
   unsigned column;
   std::string signature;
@@ -60,11 +60,11 @@ bool normalize_type(std::string_view type, std::string& normalized) {
   return true;
 }
 
-/// @brief Compute the associations between type and signature spellings in a given C/C++ @p file
-/// and append them to @p associations
-void compute_associations(CXIndex index, const char* file, std::vector<Association>& associations) {
+/// @brief Compute the associations between type and signature spellings in a given C/C++
+/// @p file_name and append them to @p associations
+void compute_associations(CXIndex index, const char* file_name, std::vector<Association>& associations) {
   CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-    index, file, NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies
+    index, file_name, NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies
   );
 
   if (translation_unit == NULL)
@@ -80,16 +80,19 @@ void compute_associations(CXIndex index, const char* file, std::vector<Associati
     normalize_type(clang_getCString(type_spelling), a.normalized_type);
     clang_disposeString(type_spelling);
 
-    CXFile file;
-    clang_getFileLocation(clang_getCursorLocation(cursor), &file, &a.line, &a.column, NULL);
+    CXFile file_name;
+    clang_getFileLocation(clang_getCursorLocation(cursor), &file_name, &a.line, &a.column, NULL);
 
-    CXString file_name = clang_getFileName(file);
-    a.file = clang_getCString(file_name);
+    CXString file_name = clang_getFileName(file_name);
+    a.file_name = clang_getCString(file_name);
     clang_disposeString(file_name);
 
-    CXString signature = clang_getCursorPrettyPrinted(cursor, NULL);
+    CXPrintingPolicy printing_policy = clang_getCursorPrintingPolicy(cursor);
+    clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, true);
+    CXString signature = clang_getCursorPrettyPrinted(cursor, printing_policy);
     a.signature = clang_getCString(signature);
     clang_disposeString(signature);
+    clang_PrintingPolicy_dispose(printing_policy);
 
     std::vector<Association>& associations = *static_cast<std::vector<Association>*>(client_data);
     associations.push_back(a);
@@ -185,7 +188,7 @@ int main(int argc, char** argv) {
   std::sort(associations.begin(), associations.end(), compare);
 
   for (const Association& a : associations) {
-    std::cout << a.file << ':' << a.line << ':' << a.column << ' ' << a.signature << std::endl;
+    std::cout << a.file_name << ':' << a.line << ':' << a.column << ": " << a.signature << std::endl;
   }
 
   return EXIT_SUCCESS;
