@@ -29,7 +29,13 @@ bool normalize_type(std::string_view type, std::string& normalized) {
   unsaved_file.Length = type.length();
 
   CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-    index, "main.c", NULL, 0, &unsaved_file, 1, CXTranslationUnit_SkipFunctionBodies
+    index,
+    "main.c",
+    NULL,
+    0,
+    &unsaved_file,
+    1,
+    CXTranslationUnit_SkipFunctionBodies
   );
 
   if (translation_unit == NULL)
@@ -62,9 +68,19 @@ bool normalize_type(std::string_view type, std::string& normalized) {
 
 /// @brief Compute the associations between type and signature spellings in a given C/C++
 /// @p file_name and append them to @p associations
-void compute_associations(CXIndex index, const char* file_name, std::vector<Association>& associations) {
+void compute_associations(
+  CXIndex index,
+  const char* file_name,
+  std::vector<Association>& associations
+) {
   CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-    index, file_name, NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies
+    index,
+    file_name,
+    NULL,
+    0,
+    NULL,
+    0,
+    CXTranslationUnit_SkipFunctionBodies
   );
 
   if (translation_unit == NULL)
