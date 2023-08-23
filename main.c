@@ -219,15 +219,6 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  if (query == NULL)
-    return EXIT_FAILURE;
-
-  char* normalized_query = normalize_spelling(query);
-  g_free(query);
-
-  if (normalized_query == NULL)
-    return EXIT_FAILURE;
-
   GArray* associations = g_array_new(FALSE, FALSE, sizeof(Association));
   g_array_set_clear_func(associations, main_clear_func);
 
@@ -241,8 +232,18 @@ int main(int argc, char** argv) {
     clang_disposeIndex(index);
   }
 
-  g_array_sort_with_data(associations, main_compare_func, normalized_query);
-  g_free(normalized_query);
+  if (query != NULL) {
+    char* normalized_query = normalize_spelling(query);
+
+    if (normalized_query != NULL) {
+      g_free(query);
+    } else {
+      normalized_query = query;
+    }
+
+    g_array_sort_with_data(associations, main_compare_func, normalized_query);
+    g_free(normalized_query);
+  }
 
   for (unsigned i = 0; i < associations->len; ++i) {
     const Association* a = &g_array_index(associations, Association, i);
