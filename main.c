@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include <glib.h>
 
 #include <clang-c/Index.h>
-#include <glib.h>
 
 typedef struct Association {
   char* normalized_type_spelling;
