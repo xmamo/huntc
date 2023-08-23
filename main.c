@@ -116,17 +116,13 @@ static void compute_associations(CXIndex index, const char* file_name, GArray* a
   if (translation_unit == NULL)
     return;
 
-  clang_visitChildren(
-    clang_getTranslationUnitCursor(translation_unit),
-    compute_associations_visitor,
-    associations
-  );
-
+  CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
+  clang_visitChildren(cursor, compute_associations_visitor, associations);
   clang_disposeTranslationUnit(translation_unit);
 }
 
 /// @brief Calculate the Levenshtein distance between two strings
-size_t distance(const char* a, const char* b) {
+static size_t distance(const char* a, const char* b) {
   size_t a_len = strlen(a);
   size_t b_len = strlen(b);
 
@@ -156,7 +152,7 @@ size_t distance(const char* a, const char* b) {
 
 /// @brief Parse the command line arguments, possibly printing an error message on errors
 /// @details The index of the first remaining argument will be stored in @c optind
-void parse_arguments(int* argc, char*** argv, char** query) {
+static void parse_arguments(int* argc, char*** argv, char** query) {
   const GOptionEntry entries[] = {
     {
       .long_name = "query",
