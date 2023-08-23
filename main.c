@@ -1,3 +1,6 @@
+#include <stdio.h>
+
+
 #include <clang-c/Index.h>
 #include <glib.h>
 
@@ -152,7 +155,7 @@ static size_t distance(const char* a, const char* b) {
 
 /// @brief Parse the command line arguments, possibly printing an error message on errors
 /// @details The index of the first remaining argument will be stored in @c optind
-static void parse_arguments(int* argc, char*** argv, char** query) {
+static void parse_arguments(int* argc, char*** argv, char** query, GError** error) {
   const GOptionEntry entries[] = {
     {
       .long_name = "query",
@@ -179,10 +182,7 @@ static void parse_arguments(int* argc, char*** argv, char** query) {
   // TODO: g_option_context_set_description(context, ...);
   g_option_context_add_main_entries(context, entries, NULL);
 
-  GError* error = NULL;
-  g_option_context_parse(context, argc, argv, &error);
-  g_clear_error(&error);
-  // TODO: Handle error
+  g_option_context_parse(context, argc, argv, error);
 
   g_option_context_free(context);
 }
@@ -207,7 +207,15 @@ static int main_compare_func(const void* _a, const void* _b, void* _normalized_q
 
 int main(int argc, char** argv) {
   char* query = NULL;
-  parse_arguments(&argc, &argv, &query);
+  GError* error = NULL;
+  parse_arguments(&argc, &argv, &query, &error);
+
+  if (error != NULL) {
+    puts(error->message);
+    g_error_free(error);
+    g_free(query);
+    return EXIT_FAILURE;
+  }
 
   if (query == NULL)
     return EXIT_FAILURE;
@@ -236,7 +244,7 @@ int main(int argc, char** argv) {
 
   for (unsigned i = 0; i < associations->len; ++i) {
     const Association* a = &g_array_index(associations, Association, i);
-    g_print("%s:%u:%u: %s\n", a->file_name, a->line, a->column, a->signature_spelling);
+    printf("%s:%u:%u: %s\n", a->file_name, a->line, a->column, a->signature_spelling);
   }
 
   g_array_unref(associations);
