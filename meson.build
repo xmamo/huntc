@@ -1,4 +1,4 @@
-project('coogle', 'c', 'cpp',
+project('huntc', 'c', 'cpp',
   version: '0.1.0',
   default_options: ['warning_level=3'])
 
@@ -14,5 +14,5 @@ clang_dep = declare_dependency(
   dependencies: [clang_dep],
   include_directories: [llvm_dep.get_variable('LLVM_INCLUDE_DIR')])
 
-executable('coogle', 'main.c',
+executable('huntc', 'main.c',
   dependencies: [dependency('glib-2.0'), clang_dep])

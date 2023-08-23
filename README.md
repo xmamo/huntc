@@ -1,27 +1,27 @@
-# Coogle: [Hoogle](https://hoogle.haskell.org) for C
+# HuntC: [Hoogle](https://hoogle.haskell.org) for C
 
-Credit to [Tsoding](https://www.youtube.com/@TsodingDaily) for this great idea.
+Credit to [Tsoding](https://github.com/tsoding) for this great idea.
 
-## What is Coogle?
+## What is HuntC?
 
-Coogle allows you to search for C functions _by signature_. This is useful for when you suppose a
+HuntC allows you to hunt for C functions _by signature_. This is useful for when you suppose a
 function you need is available in a library you're using, but you don't quite know its name.
 
-## How do I use Coogle?
+## How do I use HuntC?
 
-Coogle is accessed through a command line interface. It's usage is pretty simple:
+HuntC is accessed through a command line interface. It's usage is pretty simple:
 
 ```
-coogle <input_file> -q <query>
+huntc <input_file> -q <query>
 ```
 
 Say you want to convert a string to an integer. You know this function is in the standard library:
 how is it called?
 
 ```
-$ coogle c.h -q 'int(const char*)' | less
+$ huntc c.h -q 'int(const char*)' | less
 [...]/stdlib.h:293:6 int cgetset(const char *)
-[...]/stdlib.h:248:6 int unsetenv(const char *) asm("_unsetenv")
+[...]/stdlib.h:248:6 int unsetenv(const char *)
 [...]/stdlib.h:135:6 int atoi(const char *)
 [...]/stdio.h:178:6 int puts(const char *)
 [...]
@@ -30,7 +30,7 @@ $ coogle c.h -q 'int(const char*)' | less
 That's neat! What are all the functions which operate on a pair of `double`s?
 
 ```
-$ coogle c.h -q 'double(double, double)' | less
+$ huntc c.h -q 'double(double, double)' | less
 [...]/math.h:321:15 extern double atan2(double, double)
 [...]
 [...]/math.h:684:15 extern double scalb(double, double)
@@ -41,7 +41,7 @@ $ coogle c.h -q 'double(double, double)' | less
 [...]
 ```
 
-As you can see, Coogle makes exploring a librarys API very convenient.
+As you can see, HuntC makes exploring a librarys API very convenient.
 
 The syntax for queries reflects the syntax for function prototypes. To convert a prototype to an
 appropriate query, just remove the function's name and the final semicolon; i.e.
@@ -50,11 +50,12 @@ appropriate query, just remove the function's name and the final semicolon; i.e.
 ## Is this all?
 
 For now, this is all there is. The command line interface is pretty trivial and there is much more
-to be done. But even in this stage, Coogle is a powerful tool.
+to be done. But even in this stage, HuntC is a pretty powerful tool.
 
-[Tsoding](https://www.youtube.com/@TsodingDaily) originally came up with the concept of Coogle; he
-is currently implementing his version which is not yet released. As such, it would only be fair to
-wait for his release before considering future developments on this version.
+[Tsoding](https://github.com/tsoding) originally came up with the idea replicating
+[Hoogle](https://hoogle.haskell.org) for C; he is currently implementing his version, Coogle, which
+is not yet released. As such, it would only be fair to wait for his release before considering
+future developments on this version.
 
 ## Which files do I use as input?
 
