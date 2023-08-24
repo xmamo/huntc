@@ -121,27 +121,47 @@ distance(const char* a, const char* b) {
   size_t a_len = strlen(a);
   size_t b_len = strlen(b);
 
-  size_t* ds = g_new(size_t, (b_len + 1) * (a_len + 1));
+  if (b_len < a_len) {
+    {
+      const char* t = a;
+      a = b;
+      b = t;
+    }
 
-  for (size_t r = 0; r <= a_len; ++r) {
-    ds[(b_len + 1) * r] = r;
-  }
-
-  for (size_t c = 1; c <= b_len; ++c) {
-    ds[c] = c;
-  }
-
-  for (size_t r = 1; r <= a_len; ++r) {
-    for (size_t c = 1; c <= b_len; ++c) {
-      size_t d1 = ds[(b_len + 1) * (r - 1) + c] + 1;
-      size_t d2 = ds[(b_len + 1) * r + (c - 1)] + 1;
-      size_t d3 = ds[(b_len + 1) * (r - 1) + (c - 1)] + (a[r - 1] == b[c - 1] ? 0 : 1);
-      ds[(b_len + 1) * r + c] = MIN(MIN(d1, d2), d3);
+    {
+      size_t t = a_len;
+      a_len = b_len;
+      b_len = t;
     }
   }
 
-  size_t result = ds[(b_len + 1) * a_len + b_len];
-  g_free(ds);
+  size_t* row0 = g_new(size_t, b_len + 1);
+  size_t* row1 = g_new(size_t, b_len + 1);
+
+  for (size_t ci = 0; ci <= b_len; ++ci) {
+    row0[ci] = ci;
+  }
+
+  for (size_t ri = 1; ri <= a_len; ++ri) {
+    row1[0] = ri;
+
+    for (size_t ci = 1; ci <= b_len; ++ci) {
+      size_t deletion_cost = row0[ci] + 1;
+      size_t insertion_cost = row1[ci - 1] + 1;
+      size_t substitution_cost = a[ri - 1] == b[ci - 1] ? row0[ci - 1] : row0[ci - 1] + 1;
+      row1[ci] = MIN(MIN(deletion_cost, insertion_cost), substitution_cost);
+    }
+
+    {
+      size_t* t = row0;
+      row0 = row1;
+      row1 = t;
+    }
+  }
+
+  size_t result = row0[b_len];
+  g_free(row1);
+  g_free(row0);
   return result;
 }
 
