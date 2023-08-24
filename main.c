@@ -234,8 +234,15 @@ parse_arguments(int* argc, char*** argv, char** query, bool* libc, char** format
   // TODO: g_option_context_set_description(context, ...);
   g_option_context_add_main_entries(context, entries, NULL);
 
-  g_option_context_parse(context, argc, argv, error);
-  *libc = _libc;
+  {
+    GError* e = NULL;
+    g_option_context_parse(context, argc, argv, &e);
+    *libc = _libc;
+
+    if (e != NULL) {
+      g_propagate_error(error, e);
+    }
+  }
 
   g_option_context_free(context);
 }
