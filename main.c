@@ -10,8 +10,18 @@
 #include <clang-c/CXString.h>
 #include <clang-c/Index.h>
 
+typedef struct String {
+  char* data;
+  size_t length;
+} String;
+
+typedef struct ConstString {
+  const char* data;
+  size_t length;
+} ConstString;
+
 typedef struct Association {
-  char* normalized_type_spelling;
+  String normalized_type_spelling;
   CXString file_name;
   unsigned line;
   unsigned column;
@@ -19,22 +29,24 @@ typedef struct Association {
 } Association;
 
 /// @brief Normalize a spelling
-/// @return The normalized spelling, or @c NULL on failure
-static char*
-normalize_spelling(const char* spelling) {
+/// @return @c true on success, @c false if there was a parsing error
+static bool
+normalize_spelling(ConstString spelling, String* result) {
   CXIndex index = clang_createIndex(false, false);
 
   struct CXUnsavedFile main_c_file = {
     .Filename = "main.c",
-    .Contents = spelling,
-    .Length = strlen(spelling),
+    .Contents = spelling.data,
+    .Length = spelling.length,
   };
 
   CXTranslationUnit translation_unit =
     clang_parseTranslationUnit(index, "main.c", NULL, 0, &main_c_file, 1, CXTranslationUnit_None);
 
-  if (translation_unit == NULL)
-    return NULL;
+  if (translation_unit == NULL) {
+    clang_disposeIndex(index);
+    return false;
+  }
 
   CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
   CXSourceRange range = clang_getCursorExtent(cursor);
@@ -42,27 +54,29 @@ normalize_spelling(const char* spelling) {
   unsigned token_count;
   clang_tokenize(translation_unit, range, &tokens, &token_count);
 
-  GString* builder = g_string_new(NULL);
+  {
+    GString* builder = g_string_new(NULL);
 
-  if (token_count > 0) {
-    for (unsigned i = 0; i < token_count - 1; ++i) {
-      CXString spelling = clang_getTokenSpelling(translation_unit, tokens[i]);
-      g_string_append_printf(builder, "%s ", clang_getCString(spelling));
+    if (token_count > 0) {
+      for (unsigned i = 0; i < token_count - 1; ++i) {
+        CXString spelling = clang_getTokenSpelling(translation_unit, tokens[i]);
+        g_string_append_printf(builder, "%s ", clang_getCString(spelling));
+        clang_disposeString(spelling);
+      }
+
+      CXString spelling = clang_getTokenSpelling(translation_unit, tokens[token_count - 1]);
+      g_string_append(builder, clang_getCString(spelling));
       clang_disposeString(spelling);
     }
 
-    CXString spelling = clang_getTokenSpelling(translation_unit, tokens[token_count - 1]);
-    g_string_append(builder, clang_getCString(spelling));
-    clang_disposeString(spelling);
+    result->length = builder->len;
+    result->data = g_string_free_and_steal(builder);
   }
-
-  char* result = g_string_free_and_steal(builder);
 
   clang_disposeTokens(translation_unit, tokens, token_count);
   clang_disposeTranslationUnit(translation_unit);
   clang_disposeIndex(index);
-
-  return result;
+  return true;
 }
 
 static enum CXChildVisitResult
@@ -73,37 +87,50 @@ compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _ass
   if (clang_getCursorKind(cursor) != CXCursor_FunctionDecl)
     return CXChildVisit_Continue;
 
+  Association a;
   cursor = clang_getCanonicalCursor(cursor);
 
-  Association a;
+  {
+    CXFile file;
+    clang_getFileLocation(clang_getCursorLocation(cursor), &file, &a.line, &a.column, NULL);
 
-  CXFile file;
-  clang_getFileLocation(clang_getCursorLocation(cursor), &file, &a.line, &a.column, NULL);
+    a.file_name = clang_getFileName(file);
+    const char* file_name = clang_getCString(a.file_name);
 
-  a.file_name = clang_getFileName(file);
-  const char* file_name = clang_getCString(a.file_name);
+    for (unsigned i = 0; i < associations->len; ++i) {
+      const Association* b = &g_array_index(associations, Association, i);
 
-  for (unsigned i = 0; i < associations->len; ++i) {
-    const Association* b = &g_array_index(associations, Association, i);
-
-    if (b->line == a.line && b->column == a.column
-      && strcmp(clang_getCString(b->file_name), file_name) == 0) {
-      clang_disposeString(a.file_name);
-      return CXChildVisit_Continue;
+      if (b->line == a.line && b->column == a.column
+        && strcmp(clang_getCString(b->file_name), file_name) == 0) {
+        clang_disposeString(a.file_name);
+        return CXChildVisit_Continue;
+      }
     }
   }
 
-  CXString type_spelling = clang_getTypeSpelling(clang_getCursorType(cursor));
-  a.normalized_type_spelling = normalize_spelling(clang_getCString(type_spelling));
-  clang_disposeString(type_spelling);
+  {
+    CXString type_spelling = clang_getTypeSpelling(clang_getCursorType(cursor));
 
-  CXPrintingPolicy printing_policy = clang_getCursorPrintingPolicy(cursor);
-  clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, true);
-  a.signature_spelling = clang_getCursorPrettyPrinted(cursor, printing_policy);
-  clang_PrintingPolicy_dispose(printing_policy);
+    const char* type_spelling_data = clang_getCString(type_spelling);
+    size_t type_spelling_length = strlen(type_spelling_data);
+
+    if (!normalize_spelling(
+          (ConstString){type_spelling_data, type_spelling_length}, &a.normalized_type_spelling)) {
+      a.normalized_type_spelling.data = strdup(type_spelling_data);
+      a.normalized_type_spelling.length = type_spelling_length;
+    }
+
+    clang_disposeString(type_spelling);
+  }
+
+  {
+    CXPrintingPolicy printing_policy = clang_getCursorPrintingPolicy(cursor);
+    clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, true);
+    a.signature_spelling = clang_getCursorPrettyPrinted(cursor, printing_policy);
+    clang_PrintingPolicy_dispose(printing_policy);
+  }
 
   g_array_append_val(associations, a);
-
   return CXChildVisit_Continue;
 }
 
@@ -117,39 +144,30 @@ compute_associations(CXTranslationUnit translation_unit, GArray* associations) {
 
 /// @brief Calculate the Levenshtein distance between two strings
 static size_t
-distance(const char* a, const char* b) {
-  size_t a_len = strlen(a);
-  size_t b_len = strlen(b);
-
-  if (b_len < a_len) {
+distance(String a, String b) {
+  if (a.length < b.length) {
     {
-      const char* t = a;
+      String t = a;
       a = b;
       b = t;
     }
-
-    {
-      size_t t = a_len;
-      a_len = b_len;
-      b_len = t;
-    }
   }
 
-  size_t* rows = g_new(size_t, (b_len + 1) * 2);
-  size_t* row0 = rows + (b_len + 1) * 0;
-  size_t* row1 = rows + (b_len + 1) * 1;
+  size_t* rows = g_new(size_t, (b.length + 1) * 2);
+  size_t* row0 = rows + (b.length + 1) * 0;
+  size_t* row1 = rows + (b.length + 1) * 1;
 
-  for (size_t ci = 0; ci <= b_len; ++ci) {
+  for (size_t ci = 0; ci <= b.length; ++ci) {
     row0[ci] = ci;
   }
 
-  for (size_t ri = 1; ri <= a_len; ++ri) {
+  for (size_t ri = 1; ri <= b.length; ++ri) {
     row1[0] = ri;
 
-    for (size_t ci = 1; ci <= b_len; ++ci) {
+    for (size_t ci = 1; ci <= b.length; ++ci) {
       size_t deletion_cost = row0[ci] + 1;
       size_t insertion_cost = row1[ci - 1] + 1;
-      size_t substitution_cost = a[ri - 1] == b[ci - 1] ? row0[ci - 1] : row0[ci - 1] + 1;
+      size_t substitution_cost = a.data[ri - 1] == b.data[ci - 1] ? row0[ci - 1] : row0[ci - 1] + 1;
       row1[ci] = MIN(MIN(deletion_cost, insertion_cost), substitution_cost);
     }
 
@@ -160,7 +178,7 @@ distance(const char* a, const char* b) {
     }
   }
 
-  size_t result = row0[b_len];
+  size_t result = row0[b.length];
   g_free(rows);
   return result;
 }
@@ -224,7 +242,7 @@ static int
 main_compare_func(const void* _a, const void* _b, void* _normalized_query) {
   const Association* a = _a;
   const Association* b = _b;
-  const char* normalized_query = _normalized_query;
+  String normalized_query = *(String*)_normalized_query;
 
   size_t distance_a = distance(a->normalized_type_spelling, normalized_query);
   size_t distance_b = distance(b->normalized_type_spelling, normalized_query);
@@ -375,16 +393,18 @@ main(int argc, char** argv) {
   clang_disposeIndex(index);
 
   if (query != NULL) {
-    char* normalized_query = normalize_spelling(query);
+    size_t query_length = strlen(query);
+    String normalized_query;
 
-    if (normalized_query != NULL) {
+    if (normalize_spelling((ConstString){query, query_length}, &normalized_query)) {
       g_free(query);
     } else {
-      normalized_query = query;
+      normalized_query.data = query;
+      normalized_query.length = query_length;
     }
 
-    g_array_sort_with_data(associations, main_compare_func, normalized_query);
-    g_free(normalized_query);
+    g_array_sort_with_data(associations, main_compare_func, &normalized_query);
+    free(normalized_query.data);
   }
 
   for (unsigned i = 0; i < associations->len; ++i) {
@@ -395,6 +415,5 @@ main(int argc, char** argv) {
   }
 
   g_array_unref(associations);
-
   return EXIT_SUCCESS;
 }
