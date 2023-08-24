@@ -362,35 +362,37 @@ main(int argc, char** argv) {
   GArray* associations = g_array_new(false, false, sizeof(Association));
   g_array_set_clear_func(associations, main_clear_func);
 
-  CXIndex index = clang_createIndex(false, false);
+  {
+    CXIndex index = clang_createIndex(false, false);
 
-  if (libc) {
-    struct CXUnsavedFile c_h_file = {
-      .Filename = "c.h",
-      .Contents = C_H,
-      .Length = sizeof(C_H) - 1,
-    };
+    if (libc) {
+      struct CXUnsavedFile c_h_file = {
+        .Filename = "c.h",
+        .Contents = C_H,
+        .Length = sizeof(C_H) - 1,
+      };
 
-    CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-      index, "c.h", NULL, 0, &c_h_file, 1, CXTranslationUnit_SkipFunctionBodies);
+      CXTranslationUnit translation_unit = clang_parseTranslationUnit(
+        index, "c.h", NULL, 0, &c_h_file, 1, CXTranslationUnit_SkipFunctionBodies);
 
-    if (translation_unit != NULL) {
-      compute_associations(translation_unit, associations);
-      clang_disposeTranslationUnit(translation_unit);
+      if (translation_unit != NULL) {
+        compute_associations(translation_unit, associations);
+        clang_disposeTranslationUnit(translation_unit);
+      }
     }
-  }
 
-  for (int i = 1; i < argc; ++i) {
-    CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-      index, argv[i], NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies);
+    for (int i = 1; i < argc; ++i) {
+      CXTranslationUnit translation_unit = clang_parseTranslationUnit(
+        index, argv[i], NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies);
 
-    if (translation_unit != NULL) {
-      compute_associations(translation_unit, associations);
-      clang_disposeTranslationUnit(translation_unit);
+      if (translation_unit != NULL) {
+        compute_associations(translation_unit, associations);
+        clang_disposeTranslationUnit(translation_unit);
+      }
     }
-  }
 
-  clang_disposeIndex(index);
+    clang_disposeIndex(index);
+  }
 
   if (query != NULL) {
     size_t query_length = strlen(query);
