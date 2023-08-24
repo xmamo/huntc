@@ -116,7 +116,7 @@ compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _ass
 
     if (!normalize_spelling(
           (ConstString){type_spelling_data, type_spelling_length}, &a.normalized_type_spelling)) {
-      a.normalized_type_spelling.data = strdup(type_spelling_data);
+      a.normalized_type_spelling.data = strndup(type_spelling_data, type_spelling_length);
       a.normalized_type_spelling.length = type_spelling_length;
     }
 
@@ -234,7 +234,7 @@ static void
 main_clear_func(void* _association) {
   Association* association = _association;
   clang_disposeString(association->file_name);
-  g_free(&association->normalized_type_spelling);
+  g_clear_pointer(&association->normalized_type_spelling.data, g_free);
   clang_disposeString(association->signature_spelling);
 }
 
@@ -380,7 +380,7 @@ main(int argc, char** argv) {
     }
   }
 
-  for (int i = 0; i < argc; ++i) {
+  for (int i = 1; i < argc; ++i) {
     CXTranslationUnit translation_unit = clang_parseTranslationUnit(
       index, argv[i], NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies);
 
