@@ -8,10 +8,10 @@
 
 typedef struct Association {
   char* normalized_type_spelling;
-  char* file_name;
+  CXString file_name;
   unsigned line;
   unsigned column;
-  char* signature_spelling;
+  CXString signature_spelling;
 } Association;
 
 /// @brief Normalize a spelling
@@ -87,20 +87,20 @@ static enum CXChildVisitResult compute_associations_visitor(
   CXFile file;
   clang_getFileLocation(clang_getCursorLocation(cursor), &file, &a.line, &a.column, NULL);
 
-  CXString file_name_string = clang_getFileName(file);
-  const char* file_name = clang_getCString(file_name_string);
+  a.file_name = clang_getFileName(file);
+  const char* file_name = clang_getCString(a.file_name);
 
   for (unsigned i = 0; i < associations->len; ++i) {
     const Association* b = &g_array_index(associations, Association, i);
 
-    if (b->line == a.line && b->column == a.column && strcmp(b->file_name, file_name) == 0) {
-      clang_disposeString(file_name_string);
+    if (
+      b->line == a.line && b->column == a.column
+      && strcmp(clang_getCString(b->file_name), file_name) == 0
+    ) {
+      clang_disposeString(a.file_name);
       return CXChildVisit_Continue;
     }
   }
-
-  a.file_name = strdup(file_name);
-  clang_disposeString(file_name_string);
 
   CXString type_spelling = clang_getTypeSpelling(clang_getCursorType(cursor));
   a.normalized_type_spelling = normalize_spelling(clang_getCString(type_spelling));
@@ -108,9 +108,7 @@ static enum CXChildVisitResult compute_associations_visitor(
 
   CXPrintingPolicy printing_policy = clang_getCursorPrintingPolicy(cursor);
   clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, TRUE);
-  CXString signature_spelling = clang_getCursorPrettyPrinted(cursor, printing_policy);
-  a.signature_spelling = g_strdup(clang_getCString(signature_spelling));
-  clang_disposeString(signature_spelling);
+  a.signature_spelling = clang_getCursorPrettyPrinted(cursor, printing_policy);
   clang_PrintingPolicy_dispose(printing_policy);
 
   g_array_append_val(associations, a);
@@ -204,10 +202,9 @@ static void parse_arguments(int* argc, char*** argv, char** query, GError** erro
 
 static void main_clear_func(void* _association) {
   Association* association = _association;
-
-  g_clear_pointer(&association->file_name, g_free);
-  g_clear_pointer(&association->normalized_type_spelling, g_free);
-  g_clear_pointer(&association->signature_spelling, g_free);
+  clang_disposeString(association->file_name);
+  g_free(&association->normalized_type_spelling);
+  clang_disposeString(association->signature_spelling);
 }
 
 static int main_compare_func(const void* _a, const void* _b, void* _normalized_query) {
@@ -260,7 +257,9 @@ int main(int argc, char** argv) {
 
   for (unsigned i = 0; i < associations->len; ++i) {
     const Association* a = &g_array_index(associations, Association, i);
-    printf("%s:%u:%u: %s\n", a->file_name, a->line, a->column, a->signature_spelling);
+    const char* file_name = clang_getCString(a->file_name);
+    const char* signature_spelling = clang_getCString(a->signature_spelling);
+    printf("%s:%u:%u: %s\n", file_name, a->line, a->column, signature_spelling);
   }
 
   g_array_unref(associations);
