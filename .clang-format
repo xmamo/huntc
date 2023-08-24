@@ -1,18 +1,21 @@
-BasedOnStyle:  LLVM
-AlignAfterOpenBracket: BlockIndent
+BasedOnStyle: LLVM
+AlignAfterOpenBracket: DontAlign
 AlignEscapedNewlines: Left
 AlignOperands: DontAlign
-AlignTrailingComments: {Kind: Never}
+AlignTrailingComments: { Kind: Never }
 AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Inline
+AlwaysBreakAfterReturnType: All
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
-BinPackArguments: false
-BinPackParameters: false
+BreakArrays: false
 BreakBeforeBinaryOperators: NonAssignment
-ColumnLimit: 0
+BreakConstructorInitializers: AfterColon
+BreakInheritanceList: AfterColon
+ColumnLimit: 100
 ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 2
-ExperimentalAutoDetectBinPacking: true
 FixNamespaceComments: false
 IndentCaseLabels: true
 IndentExternBlock: Indent
@@ -21,13 +24,12 @@ InsertNewlineAtEOF: true
 KeepEmptyLinesAtTheStartOfBlocks: false
 LineEnding: LF
 NamespaceIndentation: All
-PackConstructorInitializers: NextLine
 PointerAlignment: Left
 QualifierAlignment: Left
 RemoveSemicolon: true
 SeparateDefinitionBlocks: Always
 SortIncludes: CaseInsensitive
-SpaceBeforeParens: ControlStatementsExceptControlMacros
+SpaceAfterTemplateKeyword: false
 SpacesBeforeTrailingComments: 2
 SpacesInContainerLiterals: false
-WhitespaceSensitiveMacros: [_Generic]
+TabWidth: 2

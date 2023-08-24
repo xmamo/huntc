@@ -5,6 +5,9 @@
 
 #include <glib.h>
 
+#include <clang-c/CXFile.h>
+#include <clang-c/CXSourceLocation.h>
+#include <clang-c/CXString.h>
 #include <clang-c/Index.h>
 
 typedef struct Association {
@@ -17,26 +20,18 @@ typedef struct Association {
 
 /// @brief Normalize a spelling
 /// @return The normalized spelling, or @c NULL on failure
-static char* normalize_spelling(const char* spelling) {
+static char*
+normalize_spelling(const char* spelling) {
   CXIndex index = clang_createIndex(false, false);
 
-  struct CXUnsavedFile unsaved_files[] = {
-    {
-      .Filename = "main.c",
-      .Contents = spelling,
-      .Length = strlen(spelling),
-    },
+  struct CXUnsavedFile main_c_file = {
+    .Filename = "main.c",
+    .Contents = spelling,
+    .Length = strlen(spelling),
   };
 
-  CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-    index,
-    "main.c",
-    NULL,
-    0,
-    unsaved_files,
-    G_N_ELEMENTS(unsaved_files),
-    CXTranslationUnit_None
-  );
+  CXTranslationUnit translation_unit =
+    clang_parseTranslationUnit(index, "main.c", NULL, 0, &main_c_file, 1, CXTranslationUnit_None);
 
   if (translation_unit == NULL)
     return NULL;
@@ -70,11 +65,8 @@ static char* normalize_spelling(const char* spelling) {
   return result;
 }
 
-static enum CXChildVisitResult compute_associations_visitor(
-  CXCursor cursor,
-  CXCursor parent,
-  CXClientData _associations
-) {
+static enum CXChildVisitResult
+compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _associations) {
   (void)parent;
   GArray* associations = (GArray*)_associations;
 
@@ -94,10 +86,8 @@ static enum CXChildVisitResult compute_associations_visitor(
   for (unsigned i = 0; i < associations->len; ++i) {
     const Association* b = &g_array_index(associations, Association, i);
 
-    if (
-      b->line == a.line && b->column == a.column
-      && strcmp(clang_getCString(b->file_name), file_name) == 0
-    ) {
+    if (b->line == a.line && b->column == a.column
+      && strcmp(clang_getCString(b->file_name), file_name) == 0) {
       clang_disposeString(a.file_name);
       return CXChildVisit_Continue;
     }
@@ -118,14 +108,16 @@ static enum CXChildVisitResult compute_associations_visitor(
 }
 
 /// @brief Compute the associations between type and signature spellings in a given C/C++
-/// @p file_name and append them to @p associations
-static void compute_associations(CXTranslationUnit translation_unit, GArray* associations) {
+/// @p file_name and append them to @p associations static void
+static void
+compute_associations(CXTranslationUnit translation_unit, GArray* associations) {
   CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
   clang_visitChildren(cursor, compute_associations_visitor, associations);
 }
 
 /// @brief Calculate the Levenshtein distance between two strings
-static size_t distance(const char* a, const char* b) {
+static size_t
+distance(const char* a, const char* b) {
   size_t a_len = strlen(a);
   size_t b_len = strlen(b);
 
@@ -155,7 +147,8 @@ static size_t distance(const char* a, const char* b) {
 
 /// @brief Parse the command line arguments, possibly printing an error message on errors
 /// @details The index of the first remaining argument will be stored in @c optind
-static void parse_arguments(int* argc, char*** argv, char** query, bool* libc, GError** error) {
+static void
+parse_arguments(int* argc, char*** argv, char** query, bool* libc, GError** error) {
   int _libc = *libc;
 
   const GOptionEntry entries[] = {
@@ -199,14 +192,16 @@ static void parse_arguments(int* argc, char*** argv, char** query, bool* libc, G
   g_option_context_free(context);
 }
 
-static void main_clear_func(void* _association) {
+static void
+main_clear_func(void* _association) {
   Association* association = _association;
   clang_disposeString(association->file_name);
   g_free(&association->normalized_type_spelling);
   clang_disposeString(association->signature_spelling);
 }
 
-static int main_compare_func(const void* _a, const void* _b, void* _normalized_query) {
+static int
+main_compare_func(const void* _a, const void* _b, void* _normalized_query) {
   const Association* a = _a;
   const Association* b = _b;
   const char* normalized_query = _normalized_query;
@@ -312,7 +307,8 @@ static int main_compare_func(const void* _a, const void* _b, void* _normalized_q
   "#include <wctype.h>\n"              \
   "#include <wordexp.h>\n"
 
-int main(int argc, char** argv) {
+int
+main(int argc, char** argv) {
   char* query = NULL;
   bool libc = false;
   GError* error = NULL;
@@ -328,51 +324,35 @@ int main(int argc, char** argv) {
   GArray* associations = g_array_new(false, false, sizeof(Association));
   g_array_set_clear_func(associations, main_clear_func);
 
-  {
-    CXIndex index = clang_createIndex(false, false);
+  CXIndex index = clang_createIndex(false, false);
 
-    if (libc) {
-      struct CXUnsavedFile c_h_file = {
-        .Filename = "c.h",
-        .Contents = C_H,
-        .Length = sizeof(C_H) - 1,
-      };
+  if (libc) {
+    struct CXUnsavedFile c_h_file = {
+      .Filename = "c.h",
+      .Contents = C_H,
+      .Length = sizeof(C_H) - 1,
+    };
 
-      CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-        index,
-        "c.h",
-        NULL,
-        0,
-        &c_h_file,
-        1,
-        CXTranslationUnit_SkipFunctionBodies
-      );
+    CXTranslationUnit translation_unit = clang_parseTranslationUnit(
+      index, "c.h", NULL, 0, &c_h_file, 1, CXTranslationUnit_SkipFunctionBodies);
 
-      if (translation_unit != NULL) {
-        compute_associations(translation_unit, associations);
-        clang_disposeTranslationUnit(translation_unit);
-      }
+    if (translation_unit != NULL) {
+      compute_associations(translation_unit, associations);
+      clang_disposeTranslationUnit(translation_unit);
     }
-
-    for (int i = 0; i < argc; ++i) {
-      CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-        index,
-        argv[i],
-        NULL,
-        0,
-        NULL,
-        0,
-        CXTranslationUnit_SkipFunctionBodies
-      );
-
-      if (translation_unit != NULL) {
-        compute_associations(translation_unit, associations);
-        clang_disposeTranslationUnit(translation_unit);
-      }
-    }
-
-    clang_disposeIndex(index);
   }
+
+  for (int i = 0; i < argc; ++i) {
+    CXTranslationUnit translation_unit = clang_parseTranslationUnit(
+      index, argv[i], NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies);
+
+    if (translation_unit != NULL) {
+      compute_associations(translation_unit, associations);
+      clang_disposeTranslationUnit(translation_unit);
+    }
+  }
+
+  clang_disposeIndex(index);
 
   if (query != NULL) {
     char* normalized_query = normalize_spelling(query);
