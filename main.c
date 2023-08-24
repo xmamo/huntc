@@ -135,8 +135,9 @@ distance(const char* a, const char* b) {
     }
   }
 
-  size_t* row0 = g_new(size_t, b_len + 1);
-  size_t* row1 = g_new(size_t, b_len + 1);
+  size_t* rows = g_new(size_t, (b_len + 1) * 2);
+  size_t* row0 = rows + (b_len + 1) * 0;
+  size_t* row1 = rows + (b_len + 1) * 1;
 
   for (size_t ci = 0; ci <= b_len; ++ci) {
     row0[ci] = ci;
@@ -160,8 +161,7 @@ distance(const char* a, const char* b) {
   }
 
   size_t result = row0[b_len];
-  g_free(row1);
-  g_free(row0);
+  g_free(rows);
   return result;
 }
 
