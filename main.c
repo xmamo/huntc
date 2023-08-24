@@ -80,18 +80,31 @@ static enum CXChildVisitResult compute_associations_visitor(
   if (clang_getCursorKind(cursor) != CXCursor_FunctionDecl)
     return CXChildVisit_Continue;
 
-  Association a;
+  cursor = clang_getCanonicalCursor(cursor);
 
-  CXString type_spelling = clang_getTypeSpelling(clang_getCursorType(cursor));
-  a.normalized_type_spelling = normalize_spelling(clang_getCString(type_spelling));
-  clang_disposeString(type_spelling);
+  Association a;
 
   CXFile file;
   clang_getFileLocation(clang_getCursorLocation(cursor), &file, &a.line, &a.column, NULL);
 
-  CXString file_name = clang_getFileName(file);
-  a.file_name = g_strdup(clang_getCString(file_name));
-  clang_disposeString(file_name);
+  CXString file_name_string = clang_getFileName(file);
+  const char* file_name = clang_getCString(file_name_string);
+
+  for (unsigned i = 0; i < associations->len; ++i) {
+    const Association* b = &g_array_index(associations, Association, i);
+
+    if (b->line == a.line && b->column == a.column && strcmp(b->file_name, file_name) == 0) {
+      clang_disposeString(file_name_string);
+      return CXChildVisit_Continue;
+    }
+  }
+
+  a.file_name = strdup(file_name);
+  clang_disposeString(file_name_string);
+
+  CXString type_spelling = clang_getTypeSpelling(clang_getCursorType(cursor));
+  a.normalized_type_spelling = normalize_spelling(clang_getCString(type_spelling));
+  clang_disposeString(type_spelling);
 
   CXPrintingPolicy printing_policy = clang_getCursorPrintingPolicy(cursor);
   clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, TRUE);
@@ -165,7 +178,7 @@ static void parse_arguments(int* argc, char*** argv, char** query, GError** erro
       .flags = G_OPTION_FLAG_NONE,
       .arg = G_OPTION_ARG_STRING,
       .arg_data = query,
-      .description = "The query",
+      .description = NULL,
       .arg_description = "QUERY",
     },
     {
