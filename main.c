@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,7 +18,7 @@ typedef struct Association {
 /// @brief Normalize a spelling
 /// @return The normalized spelling, or @c NULL on failure
 static char* normalize_spelling(const char* spelling) {
-  CXIndex index = clang_createIndex(FALSE, FALSE);
+  CXIndex index = clang_createIndex(false, false);
 
   struct CXUnsavedFile unsaved_files[] = {
     {
@@ -107,7 +108,7 @@ static enum CXChildVisitResult compute_associations_visitor(
   clang_disposeString(type_spelling);
 
   CXPrintingPolicy printing_policy = clang_getCursorPrintingPolicy(cursor);
-  clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, TRUE);
+  clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, true);
   a.signature_spelling = clang_getCursorPrettyPrinted(cursor, printing_policy);
   clang_PrintingPolicy_dispose(printing_policy);
 
@@ -118,23 +119,9 @@ static enum CXChildVisitResult compute_associations_visitor(
 
 /// @brief Compute the associations between type and signature spellings in a given C/C++
 /// @p file_name and append them to @p associations
-static void compute_associations(CXIndex index, const char* file_name, GArray* associations) {
-  CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-    index,
-    file_name,
-    NULL,
-    0,
-    NULL,
-    0,
-    CXTranslationUnit_SkipFunctionBodies
-  );
-
-  if (translation_unit == NULL)
-    return;
-
+static void compute_associations(CXTranslationUnit translation_unit, GArray* associations) {
   CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
   clang_visitChildren(cursor, compute_associations_visitor, associations);
-  clang_disposeTranslationUnit(translation_unit);
 }
 
 /// @brief Calculate the Levenshtein distance between two strings
@@ -168,7 +155,9 @@ static size_t distance(const char* a, const char* b) {
 
 /// @brief Parse the command line arguments, possibly printing an error message on errors
 /// @details The index of the first remaining argument will be stored in @c optind
-static void parse_arguments(int* argc, char*** argv, char** query, GError** error) {
+static void parse_arguments(int* argc, char*** argv, char** query, bool* libc, GError** error) {
+  int _libc = *libc;
+
   const GOptionEntry entries[] = {
     {
       .long_name = "query",
@@ -178,6 +167,15 @@ static void parse_arguments(int* argc, char*** argv, char** query, GError** erro
       .arg_data = query,
       .description = NULL,
       .arg_description = "QUERY",
+    },
+    {
+      .long_name = "libc",
+      .short_name = 'c',
+      .flags = G_OPTION_FLAG_NONE,
+      .arg = G_OPTION_ARG_NONE,
+      .arg_data = &_libc,
+      .description = NULL,
+      .arg_description = NULL,
     },
     {
       .long_name = NULL,
@@ -196,6 +194,7 @@ static void parse_arguments(int* argc, char*** argv, char** query, GError** erro
   g_option_context_add_main_entries(context, entries, NULL);
 
   g_option_context_parse(context, argc, argv, error);
+  *libc = _libc;
 
   g_option_context_free(context);
 }
@@ -217,10 +216,107 @@ static int main_compare_func(const void* _a, const void* _b, void* _normalized_q
   return distance_a == distance_b ? 0 : (distance_a < distance_b ? -1 : +1);
 }
 
+#define C_H                            \
+  "#include <aio.h>\n"                 \
+  "#include <argp.h>\n"                \
+  "#include <argz.h>\n"                \
+  "#include <arpa/inet.h>\n"           \
+  "#include <assert.h>\n"              \
+  "#include <complex.h>\n"             \
+  "#include <crypt.h>\n"               \
+  "#include <ctype.h>\n"               \
+  "#include <dirent.h>\n"              \
+  "#include <dlfcn.h>\n"               \
+  "#include <envz.h>\n"                \
+  "#include <err.h>\n"                 \
+  "#include <errno.h>\n"               \
+  "#include <error.h>\n"               \
+  "#include <execinfo.h>\n"            \
+  "#include <fcntl.h>\n"               \
+  "#include <fenv.h>\n"                \
+  "#include <float.h>\n"               \
+  "#include <fmtmsg.h>\n"              \
+  "#include <fnmatch.h>\n"             \
+  "#include <fstab.h>\n"               \
+  "#include <ftw.h>\n"                 \
+  "#include <gconv.h>\n"               \
+  "#include <getopt.h>\n"              \
+  "#include <glob.h>\n"                \
+  "#include <grp.h>\n"                 \
+  "#include <iconv.h>\n"               \
+  "#include <inttypes.h>\n"            \
+  "#include <langinfo.h>\n"            \
+  "#include <libgen.h>\n"              \
+  "#include <libintl.h>\n"             \
+  "#include <limits.h>\n"              \
+  "#include <locale.h>\n"              \
+  "#include <malloc.h>\n"              \
+  "#include <math.h>\n"                \
+  "#include <mcheck.h>\n"              \
+  "#include <mntent.h>\n"              \
+  "#include <net/if.h>\n"              \
+  "#include <netdb.h>\n"               \
+  "#include <netinet/in.h>\n"          \
+  "#include <nl_types.h>\n"            \
+  "#include <obstack.h>\n"             \
+  "#include <printf.h>\n"              \
+  "#include <pthread.h>\n"             \
+  "#include <pty.h>\n"                 \
+  "#include <pwd.h>\n"                 \
+  "#include <regex.h>\n"               \
+  "#include <sched.h>\n"               \
+  "#include <search.h>\n"              \
+  "#include <setjmp.h>\n"              \
+  "#include <sgtty.h>\n"               \
+  "#include <signal.h>\n"              \
+  "#include <stdarg.h>\n"              \
+  "#include <stddef.h>\n"              \
+  "#include <stdint.h>\n"              \
+  "#include <stdio_ext.h>\n"           \
+  "#include <stdio.h>\n"               \
+  "#include <stdlib.h>\n"              \
+  "#include <string.h>\n"              \
+  "#include <sys/auxv.h>\n"            \
+  "#include <sys/file.h>\n"            \
+  "#include <sys/ioctl.h>\n"           \
+  "#include <sys/mman.h>\n"            \
+  "#include <sys/mount.h>\n"           \
+  "#include <sys/param.h>\n"           \
+  "#include <sys/random.h>\n"          \
+  "#include <sys/resource.h>\n"        \
+  "#include <sys/rseq.h>\n"            \
+  "#include <sys/single_threaded.h>\n" \
+  "#include <sys/socket.h>\n"          \
+  "#include <sys/stat.h>\n"            \
+  "#include <sys/sysinfo.h>\n"         \
+  "#include <sys/time.h>\n"            \
+  "#include <sys/times.h>\n"           \
+  "#include <sys/timex.h>\n"           \
+  "#include <sys/types.h>\n"           \
+  "#include <sys/uio.h>\n"             \
+  "#include <sys/un.h>\n"              \
+  "#include <sys/utsname.h>\n"         \
+  "#include <sys/vlimit.h>\n"          \
+  "#include <sys/wait.h>\n"            \
+  "#include <syslog.h>\n"              \
+  "#include <termios.h>\n"             \
+  "#include <threads.h>\n"             \
+  "#include <time.h>\n"                \
+  "#include <ucontext.h>\n"            \
+  "#include <ulimit.h>\n"              \
+  "#include <unistd.h>\n"              \
+  "#include <utime.h>\n"               \
+  "#include <utmp.h>\n"                \
+  "#include <utmpx.h>\n"               \
+  "#include <wchar.h>\n"               \
+  "#include <wctype.h>\n"              \
+  "#include <wordexp.h>\n"
+
 int main(int argc, char** argv) {
   char* query = NULL;
+  bool libc = false;
   GError* error = NULL;
-  parse_arguments(&argc, &argv, &query, &error);
+  parse_arguments(&argc, &argv, &query, &libc, &error);
 
   if (error != NULL) {
     puts(error->message);
@@ -229,14 +325,50 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  GArray* associations = g_array_new(FALSE, FALSE, sizeof(Association));
+  GArray* associations = g_array_new(false, false, sizeof(Association));
   g_array_set_clear_func(associations, main_clear_func);
 
   {
-    CXIndex index = clang_createIndex(FALSE, FALSE);
+    CXIndex index = clang_createIndex(false, false);
+
+    if (libc) {
+      struct CXUnsavedFile c_h_file = {
+        .Filename = "c.h",
+        .Contents = C_H,
+        .Length = sizeof(C_H) - 1,
+      };
+
+      CXTranslationUnit translation_unit = clang_parseTranslationUnit(
+        index,
+        "c.h",
+        NULL,
+        0,
+        &c_h_file,
+        1,
+        CXTranslationUnit_SkipFunctionBodies
+      );
+
+      if (translation_unit != NULL) {
+        compute_associations(translation_unit, associations);
+        clang_disposeTranslationUnit(translation_unit);
+      }
+    }
 
     for (int i = 0; i < argc; ++i) {
-      compute_associations(index, argv[i], associations);
+      CXTranslationUnit translation_unit = clang_parseTranslationUnit(
+        index,
+        argv[i],
+        NULL,
+        0,
+        NULL,
+        0,
+        CXTranslationUnit_SkipFunctionBodies
+      );
+
+      if (translation_unit != NULL) {
+        compute_associations(translation_unit, associations);
+        clang_disposeTranslationUnit(translation_unit);
+      }
     }
 
     clang_disposeIndex(index);
