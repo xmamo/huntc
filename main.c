@@ -364,7 +364,7 @@ main(int argc, char** argv) {
   parse_arguments(&argc, &argv, &query, &libc, &format, &error);
 
   if (error != NULL) {
-    puts(error->message);
+    g_fprintf(stderr, "%s\n", error->message);
     g_error_free(error);
     g_free(query);
     return EXIT_FAILURE;
