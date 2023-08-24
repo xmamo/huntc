@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <glib.h>
+#include <glib/gprintf.h>
 
 #include <clang-c/CXFile.h>
 #include <clang-c/CXSourceLocation.h>
@@ -186,7 +187,7 @@ distance(String a, String b) {
 /// @brief Parse the command line arguments, possibly printing an error message on errors
 /// @details The index of the first remaining argument will be stored in @c optind
 static void
-parse_arguments(int* argc, char*** argv, char** query, bool* libc, GError** error) {
+parse_arguments(int* argc, char*** argv, char** query, bool* libc, char** format, GError** error) {
   int _libc = *libc;
 
   const GOptionEntry entries[] = {
@@ -205,6 +206,15 @@ parse_arguments(int* argc, char*** argv, char** query, bool* libc, GError** erro
       .flags = G_OPTION_FLAG_NONE,
       .arg = G_OPTION_ARG_NONE,
       .arg_data = &_libc,
+      .description = NULL,
+      .arg_description = NULL,
+    },
+    {
+      .long_name = "format",
+      .short_name = 'f',
+      .flags = G_OPTION_FLAG_NONE,
+      .arg = G_OPTION_ARG_STRING,
+      .arg_data = format,
       .description = NULL,
       .arg_description = NULL,
     },
@@ -349,8 +359,9 @@ int
 main(int argc, char** argv) {
   char* query = NULL;
   bool libc = false;
+  char* format = NULL;
   GError* error = NULL;
-  parse_arguments(&argc, &argv, &query, &libc, &error);
+  parse_arguments(&argc, &argv, &query, &libc, &format, &error);
 
   if (error != NULL) {
     puts(error->message);
@@ -409,11 +420,18 @@ main(int argc, char** argv) {
     free(normalized_query.data);
   }
 
-  for (unsigned i = 0; i < associations->len; ++i) {
-    const Association* a = &g_array_index(associations, Association, i);
-    const char* file_name = clang_getCString(a->file_name);
-    const char* signature_spelling = clang_getCString(a->signature_spelling);
-    printf("%s:%u:%u: %s\n", file_name, a->line, a->column, signature_spelling);
+  {
+    const char* f = format != NULL ? format : "%1$s:%2$u:%3$u: %4$s";
+
+    for (unsigned i = 0; i < associations->len; ++i) {
+      const Association* a = &g_array_index(associations, Association, i);
+      const char* file_name = clang_getCString(a->file_name);
+      const char* signature_spelling = clang_getCString(a->signature_spelling);
+      g_printf(f, file_name, a->line, a->column, signature_spelling);
+      putchar('\n');
+    }
+
+    g_free(format);
   }
 
   g_array_unref(associations);
