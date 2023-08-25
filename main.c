@@ -188,7 +188,7 @@ distance(String a, String b) {
 /// @details The index of the first remaining argument will be stored in @c optind
 static void
 parse_arguments(int* argc, char*** argv, char** query, bool* libc, char** format, GError** error) {
-  int _libc = *libc;
+  int c = *libc;
 
   const GOptionEntry entries[] = {
     {
@@ -205,7 +205,7 @@ parse_arguments(int* argc, char*** argv, char** query, bool* libc, char** format
       .short_name = 'c',
       .flags = G_OPTION_FLAG_NONE,
       .arg = G_OPTION_ARG_NONE,
-      .arg_data = &_libc,
+      .arg_data = &c,
       .description = NULL,
       .arg_description = NULL,
     },
@@ -218,15 +218,7 @@ parse_arguments(int* argc, char*** argv, char** query, bool* libc, char** format
       .description = NULL,
       .arg_description = NULL,
     },
-    {
-      .long_name = NULL,
-      .short_name = 0,
-      .flags = G_OPTION_FLAG_NONE,
-      .arg = G_OPTION_ARG_NONE,
-      .arg_data = NULL,
-      .description = NULL,
-      .arg_description = NULL,
-    },
+    G_OPTION_ENTRY_NULL,
   };
 
   GOptionContext* context = g_option_context_new(NULL);
@@ -237,7 +229,7 @@ parse_arguments(int* argc, char*** argv, char** query, bool* libc, char** format
   {
     GError* e = NULL;
     g_option_context_parse(context, argc, argv, &e);
-    *libc = _libc;
+    *libc = c;
 
     if (e != NULL) {
       g_propagate_error(error, e);
