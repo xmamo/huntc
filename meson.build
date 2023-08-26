@@ -14,5 +14,5 @@ clang_dep = declare_dependency(
   dependencies: [clang_dep],
   include_directories: [llvm_dep.get_variable('LLVM_INCLUDE_DIR')])
 
-executable('huntc', 'main.c',
+executable('huntc', ['main.c', 'huntc.c'],
   dependencies: [dependency('glib-2.0'), clang_dep])
