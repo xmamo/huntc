@@ -146,12 +146,10 @@ compute_associations(CXTranslationUnit translation_unit, GArray* associations) {
 /// @brief Calculate the Levenshtein distance between two strings
 static size_t
 distance(String a, String b) {
-  if (a.length < b.length) {
-    {
-      String t = a;
-      a = b;
-      b = t;
-    }
+  if (b.length < a.length) {
+    String t = a;
+    a = b;
+    b = t;
   }
 
   size_t* rows = g_new(size_t, (b.length + 1) * 2);
@@ -162,7 +160,7 @@ distance(String a, String b) {
     row0[ci] = ci;
   }
 
-  for (size_t ri = 1; ri <= b.length; ++ri) {
+  for (size_t ri = 1;; ++ri) {
     row1[0] = ri;
 
     for (size_t ci = 1; ci <= b.length; ++ci) {
@@ -172,14 +170,15 @@ distance(String a, String b) {
       row1[ci] = MIN(MIN(deletion_cost, insertion_cost), substitution_cost);
     }
 
-    {
-      size_t* t = row0;
-      row0 = row1;
-      row1 = t;
-    }
+    if (ri >= a.length)
+      break;
+
+    size_t* t = row0;
+    row0 = row1;
+    row1 = t;
   }
 
-  size_t result = row0[b.length];
+  size_t result = row1[b.length];
   g_free(rows);
   return result;
 }
