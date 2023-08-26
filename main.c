@@ -13,7 +13,7 @@
 
 static void
 clear_function(void* _association) {
-  Association* association = _association;
+  HuntcAssociation* association = _association;
   clang_disposeString(association->file_name);
   g_clear_pointer(&association->normalized_type_spelling.data, g_free);
   clang_disposeString(association->signature_spelling);
@@ -21,9 +21,9 @@ clear_function(void* _association) {
 
 static int
 compare_function(const void* _a, const void* _b, void* _normalized_query) {
-  const Association* a = _a;
-  const Association* b = _b;
-  String normalized_query = *(String*)_normalized_query;
+  const HuntcAssociation* a = _a;
+  const HuntcAssociation* b = _b;
+  HuntcString normalized_query = *(HuntcString*)_normalized_query;
 
   size_t distance_a = huntc_distance(a->normalized_type_spelling, normalized_query);
   size_t distance_b = huntc_distance(b->normalized_type_spelling, normalized_query);
@@ -141,7 +141,7 @@ main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  GArray* associations = g_array_new(false, false, sizeof(Association));
+  GArray* associations = g_array_new(false, false, sizeof(HuntcAssociation));
   g_array_set_clear_func(associations, clear_function);
 
   {
@@ -178,9 +178,9 @@ main(int argc, char** argv) {
 
   if (query != NULL) {
     size_t query_length = strlen(query);
-    String normalized_query;
+    HuntcString normalized_query;
 
-    if (huntc_normalize_spelling((ConstString){query, query_length}, &normalized_query)) {
+    if (huntc_normalize_spelling((HuntcConstString){query, query_length}, &normalized_query)) {
       g_free(query);
     } else {
       normalized_query.data = query;
@@ -195,7 +195,7 @@ main(int argc, char** argv) {
     const char* f = format != NULL ? format : "%1$s:%2$u:%3$u: %4$s";
 
     for (unsigned i = 0; i < associations->len; ++i) {
-      const Association* a = &g_array_index(associations, Association, i);
+      const HuntcAssociation* a = &g_array_index(associations, HuntcAssociation, i);
       const char* file_name = clang_getCString(a->file_name);
       const char* signature_spelling = clang_getCString(a->signature_spelling);
       g_printf(f, file_name, a->line, a->column, signature_spelling);

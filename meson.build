@@ -14,5 +14,15 @@ clang_dep = declare_dependency(
   dependencies: [clang_dep],
   include_directories: [llvm_dep.get_variable('LLVM_INCLUDE_DIR')])
 
-executable('huntc', ['main.c', 'huntc.c'],
+huntc_lib = static_library('huntc', 'huntc.c',
   dependencies: [dependency('glib-2.0'), clang_dep])
+
+huntc_exe = executable('huntc', 'main.c',
+  dependencies: [dependency('glib-2.0'), clang_dep],
+  link_with: [huntc_lib])
+
+huntc_test_exe = executable('huntc_test', 'test.c',
+  dependencies: [dependency('glib-2.0'), clang_dep],
+  link_with: [huntc_lib])
+
+test('huntc_test', huntc_test_exe)

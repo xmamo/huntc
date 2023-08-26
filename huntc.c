@@ -12,7 +12,7 @@
 #include <clang-c/Index.h>
 
 bool
-huntc_normalize_spelling(ConstString spelling, String* result) {
+huntc_normalize_spelling(HuntcConstString spelling, HuntcString* result) {
   CXIndex index = clang_createIndex(false, false);
 
   struct CXUnsavedFile main_c_file = {
@@ -68,7 +68,7 @@ compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _ass
   if (clang_getCursorKind(cursor) != CXCursor_FunctionDecl)
     return CXChildVisit_Continue;
 
-  Association a;
+  HuntcAssociation a;
   cursor = clang_getCanonicalCursor(cursor);
 
   {
@@ -79,7 +79,7 @@ compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _ass
     const char* file_name = clang_getCString(a.file_name);
 
     for (unsigned i = 0; i < associations->len; ++i) {
-      const Association* b = &g_array_index(associations, Association, i);
+      const HuntcAssociation* b = &g_array_index(associations, HuntcAssociation, i);
 
       if (b->line == a.line && b->column == a.column
         && strcmp(clang_getCString(b->file_name), file_name) == 0) {
@@ -95,8 +95,8 @@ compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _ass
     const char* type_spelling_data = clang_getCString(type_spelling);
     size_t type_spelling_length = strlen(type_spelling_data);
 
-    if (!huntc_normalize_spelling(
-          (ConstString){type_spelling_data, type_spelling_length}, &a.normalized_type_spelling)) {
+    if (!huntc_normalize_spelling((HuntcConstString){type_spelling_data, type_spelling_length},
+          &a.normalized_type_spelling)) {
       a.normalized_type_spelling.data = strndup(type_spelling_data, type_spelling_length);
       a.normalized_type_spelling.length = type_spelling_length;
     }
@@ -122,12 +122,15 @@ huntc_compute_associations(CXTranslationUnit translation_unit, GArray* associati
 }
 
 size_t
-huntc_distance(String a, String b) {
+huntc_distance(HuntcString a, HuntcString b) {
   if (b.length < a.length) {
-    String t = a;
+    HuntcString t = a;
     a = b;
     b = t;
   }
+
+  if (a.length == 0)
+    return b.length;
 
   size_t* rows = g_new(size_t, (b.length + 1) * 2);
   size_t* row0 = rows + (b.length + 1) * 0;
@@ -161,7 +164,8 @@ huntc_distance(String a, String b) {
 }
 
 void
-huntc_parse_arguments(int* argc, char*** argv, char** query, bool* libc, char** format, GError** error) {
+huntc_parse_arguments(
+  int* argc, char*** argv, char** query, bool* libc, char** format, GError** error) {
   int c = *libc;
 
   const GOptionEntry entries[] = {
