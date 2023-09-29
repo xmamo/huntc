@@ -6,14 +6,11 @@
 
 #include <glib.h>
 
-#include <clang-c/CXFile.h>
-#include <clang-c/CXSourceLocation.h>
-#include <clang-c/CXString.h>
 #include <clang-c/Index.h>
 
 bool
 huntc_normalize_spelling(HuntcConstString spelling, HuntcString* result) {
-  CXIndex index = clang_createIndex(false, false);
+  CXIndex index = clang_createIndex(FALSE, FALSE);
 
   struct CXUnsavedFile main_c_file = {
     .Filename = "main.c",
@@ -51,7 +48,7 @@ huntc_normalize_spelling(HuntcConstString spelling, HuntcString* result) {
     }
 
     result->length = builder->len;
-    result->data = g_string_free_and_steal(builder);
+    result->data = g_string_free(builder, FALSE);
   }
 
   clang_disposeTokens(translation_unit, tokens, token_count);
@@ -106,7 +103,7 @@ compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _ass
 
   {
     CXPrintingPolicy printing_policy = clang_getCursorPrintingPolicy(cursor);
-    clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, true);
+    clang_PrintingPolicy_setProperty(printing_policy, CXPrintingPolicy_PolishForDeclaration, TRUE);
     a.signature_spelling = clang_getCursorPrettyPrinted(cursor, printing_policy);
     clang_PrintingPolicy_dispose(printing_policy);
   }
@@ -166,7 +163,7 @@ huntc_distance(HuntcString a, HuntcString b) {
 void
 huntc_parse_arguments(
   int* argc, char*** argv, char** query, bool* libc, char** format, GError** error) {
-  int c = *libc;
+  gboolean c = *libc;
 
   const GOptionEntry entries[] = {
     {
@@ -200,8 +197,6 @@ huntc_parse_arguments(
   };
 
   GOptionContext* context = g_option_context_new(NULL);
-  // TODO: g_option_context_set_summary(context, ...);
-  // TODO: g_option_context_set_description(context, ...);
   g_option_context_add_main_entries(context, entries, NULL);
 
   {
