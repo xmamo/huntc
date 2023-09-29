@@ -126,9 +126,6 @@ huntc_distance(HuntcString a, HuntcString b, bool fuzzy) {
     b = t;
   }
 
-  if (a.length == 0)
-    return b.length;
-
   size_t* rows = g_new(size_t, (b.length + 1) * 2);
   size_t* row0 = rows + (b.length + 1) * 0;
   size_t* row1 = rows + (b.length + 1) * 1;
@@ -143,7 +140,7 @@ huntc_distance(HuntcString a, HuntcString b, bool fuzzy) {
     }
   }
 
-  for (size_t ri = 1;; ++ri) {
+  for (size_t ri = 1; ri <= a.length; ++ri) {
     row1[0] = ri;
 
     for (size_t ci = 1; ci <= b.length; ++ci) {
@@ -153,15 +150,12 @@ huntc_distance(HuntcString a, HuntcString b, bool fuzzy) {
       row1[ci] = MIN(MIN(deletion_cost, insertion_cost), substitution_cost);
     }
 
-    if (ri >= a.length)
-      break;
-
     size_t* t = row0;
     row0 = row1;
     row1 = t;
   }
 
-  size_t result = row1[b.length];
+  size_t result = row0[b.length];
   g_free(rows);
   return result;
 }
