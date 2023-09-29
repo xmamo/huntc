@@ -9,13 +9,13 @@ AllowShortLambdasOnASingleLine: Inline
 AlwaysBreakAfterReturnType: All
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
+BracedInitializerIndentWidth: 2
 BreakArrays: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterColon
 ColumnLimit: 100
 ConstructorInitializerIndentWidth: 2
-ContinuationIndentWidth: 2
 FixNamespaceComments: false
 IndentCaseLabels: true
 IndentExternBlock: Indent

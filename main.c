@@ -160,7 +160,7 @@ main(int argc, char** argv) {
       };
 
       CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-        index, "c.h", NULL, 0, &c_h_file, 1, CXTranslationUnit_SkipFunctionBodies);
+          index, "c.h", NULL, 0, &c_h_file, 1, CXTranslationUnit_SkipFunctionBodies);
 
       if (translation_unit != NULL) {
         huntc_compute_associations(translation_unit, associations);
@@ -170,7 +170,7 @@ main(int argc, char** argv) {
 
     for (int i = 1; i < argc; ++i) {
       CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-        index, argv[i], NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies);
+          index, argv[i], NULL, 0, NULL, 0, CXTranslationUnit_SkipFunctionBodies);
 
       if (translation_unit != NULL) {
         huntc_compute_associations(translation_unit, associations);

@@ -19,7 +19,7 @@ huntc_normalize_spelling(HuntcConstString spelling, HuntcString* result) {
   };
 
   CXTranslationUnit translation_unit =
-    clang_parseTranslationUnit(index, "main.c", NULL, 0, &main_c_file, 1, CXTranslationUnit_None);
+      clang_parseTranslationUnit(index, "main.c", NULL, 0, &main_c_file, 1, CXTranslationUnit_None);
 
   if (translation_unit == NULL) {
     clang_disposeIndex(index);
@@ -79,7 +79,7 @@ compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _ass
       const HuntcAssociation* b = &g_array_index(associations, HuntcAssociation, i);
 
       if (b->line == a.line && b->column == a.column
-        && strcmp(clang_getCString(b->file_name), file_name) == 0) {
+          && strcmp(clang_getCString(b->file_name), file_name) == 0) {
         clang_disposeString(a.file_name);
         return CXChildVisit_Continue;
       }
@@ -93,7 +93,7 @@ compute_associations_visitor(CXCursor cursor, CXCursor parent, CXClientData _ass
     size_t type_spelling_length = strlen(type_spelling_data);
 
     if (!huntc_normalize_spelling((HuntcConstString){type_spelling_data, type_spelling_length},
-          &a.normalized_type_spelling)) {
+            &a.normalized_type_spelling)) {
       a.normalized_type_spelling.data = strndup(type_spelling_data, type_spelling_length);
       a.normalized_type_spelling.length = type_spelling_length;
     }
@@ -162,7 +162,7 @@ huntc_distance(HuntcString a, HuntcString b, bool fuzzy) {
 
 void
 huntc_parse_arguments(
-  int* argc, char*** argv, char** query, bool* libc, bool* fuzzy, char** format, GError** error) {
+    int* argc, char*** argv, char** query, bool* libc, bool* fuzzy, char** format, GError** error) {
   gboolean c = *libc;
   gboolean f = *fuzzy;
 

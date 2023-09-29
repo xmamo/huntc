@@ -42,4 +42,4 @@ huntc_distance(HuntcString a, HuntcString b, bool fuzzy);
 /// @details The index of the first remaining argument will be stored in @c optind
 void
 huntc_parse_arguments(
-  int* argc, char*** argv, char** query, bool* libc, bool* fuzzy, char** format, GError** error);
+    int* argc, char*** argv, char** query, bool* libc, bool* fuzzy, char** format, GError** error);
