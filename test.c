@@ -5,23 +5,23 @@
 #include "huntc.h"
 
 #define STRING(s) ((HuntcString){s, sizeof(s) - 1})
-#define huntc_distance(a, b) huntc_distance(STRING(a), STRING(b))
+#define huntc_distance(a, b, fuzzy) huntc_distance(STRING(a), STRING(b), fuzzy)
 
 static void
 test_huntc_distance(void) {
-  g_assert_cmpint(huntc_distance("", ""), ==, 0);
-  g_assert_cmpint(huntc_distance("", "abc"), ==, 3);
-  g_assert_cmpint(huntc_distance("abc", ""), ==, 3);
-  g_assert_cmpint(huntc_distance("abc", "axc"), ==, 1);
-  g_assert_cmpint(huntc_distance("axc", "abc"), ==, 1);
-  g_assert_cmpint(huntc_distance("abc", "xyz"), ==, 3);
-  g_assert_cmpint(huntc_distance("xyz", "abc"), ==, 3);
-  g_assert_cmpint(huntc_distance("abc", "abcdef"), ==, 3);
-  g_assert_cmpint(huntc_distance("abcdef", "abc"), ==, 3);
-  g_assert_cmpint(huntc_distance("bcde", "abcdef"), ==, 2);
-  g_assert_cmpint(huntc_distance("abcdef", "bcde"), ==, 2);
-  g_assert_cmpint(huntc_distance("kitten", "sitting"), ==, 3);
-  g_assert_cmpint(huntc_distance("sitting", "kitten"), ==, 3);
+  g_assert_cmpint(huntc_distance("", "", false), ==, 0);
+  g_assert_cmpint(huntc_distance("", "abc", false), ==, 3);
+  g_assert_cmpint(huntc_distance("abc", "", false), ==, 3);
+  g_assert_cmpint(huntc_distance("abc", "axc", false), ==, 1);
+  g_assert_cmpint(huntc_distance("axc", "abc", false), ==, 1);
+  g_assert_cmpint(huntc_distance("abc", "xyz", false), ==, 3);
+  g_assert_cmpint(huntc_distance("xyz", "abc", false), ==, 3);
+  g_assert_cmpint(huntc_distance("abc", "abcdef", false), ==, 3);
+  g_assert_cmpint(huntc_distance("abcdef", "abc", false), ==, 3);
+  g_assert_cmpint(huntc_distance("bcde", "abcdef", false), ==, 2);
+  g_assert_cmpint(huntc_distance("abcdef", "bcde", false), ==, 2);
+  g_assert_cmpint(huntc_distance("kitten", "sitting", false), ==, 3);
+  g_assert_cmpint(huntc_distance("sitting", "kitten", false), ==, 3);
 }
 
 int

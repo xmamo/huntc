@@ -36,10 +36,10 @@ huntc_compute_associations(CXTranslationUnit translation_unit, GArray* associati
 
 /// @brief Calculate the Levenshtein distance between two strings
 size_t
-huntc_distance(HuntcString a, HuntcString b);
+huntc_distance(HuntcString a, HuntcString b, bool fuzzy);
 
 /// @brief Parse the command line arguments, possibly printing an error message on errors
 /// @details The index of the first remaining argument will be stored in @c optind
 void
 huntc_parse_arguments(
-  int* argc, char*** argv, char** query, bool* libc, char** format, GError** error);
+  int* argc, char*** argv, char** query, bool* libc, bool* fuzzy, char** format, GError** error);

@@ -6,10 +6,14 @@
 #include <glib.h>
 #include <glib/gprintf.h>
 
-#include <clang-c/CXString.h>
 #include <clang-c/Index.h>
 
 #include "huntc.h"
+
+typedef struct CompareFunctionData {
+  HuntcString query;
+  bool fuzzy;
+} CompareFunctionData;
 
 static void
 clear_function(void* _association) {
@@ -20,13 +24,13 @@ clear_function(void* _association) {
 }
 
 static int
-compare_function(const void* _a, const void* _b, void* _normalized_query) {
+compare_function(const void* _a, const void* _b, void* _data) {
   const HuntcAssociation* a = _a;
   const HuntcAssociation* b = _b;
-  HuntcString normalized_query = *(HuntcString*)_normalized_query;
+  CompareFunctionData* data = (CompareFunctionData*)_data;
 
-  size_t distance_a = huntc_distance(a->normalized_type_spelling, normalized_query);
-  size_t distance_b = huntc_distance(b->normalized_type_spelling, normalized_query);
+  size_t distance_a = huntc_distance(a->normalized_type_spelling, data->query, data->fuzzy);
+  size_t distance_b = huntc_distance(b->normalized_type_spelling, data->query, data->fuzzy);
   return distance_a == distance_b ? 0 : (distance_a < distance_b ? -1 : +1);
 }
 
@@ -130,9 +134,10 @@ int
 main(int argc, char** argv) {
   char* query = NULL;
   bool libc = false;
+  bool fuzzy = false;
   char* format = NULL;
   GError* error = NULL;
-  huntc_parse_arguments(&argc, &argv, &query, &libc, &format, &error);
+  huntc_parse_arguments(&argc, &argv, &query, &libc, &fuzzy, &format, &error);
 
   if (error != NULL) {
     g_fprintf(stderr, "%s\n", error->message);
@@ -141,11 +146,11 @@ main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  GArray* associations = g_array_new(false, false, sizeof(HuntcAssociation));
+  GArray* associations = g_array_new(FALSE, FALSE, sizeof(HuntcAssociation));
   g_array_set_clear_func(associations, clear_function);
 
   {
-    CXIndex index = clang_createIndex(false, false);
+    CXIndex index = clang_createIndex(FALSE, FALSE);
 
     if (libc) {
       struct CXUnsavedFile c_h_file = {
@@ -187,7 +192,8 @@ main(int argc, char** argv) {
       normalized_query.length = query_length;
     }
 
-    g_array_sort_with_data(associations, compare_function, &normalized_query);
+    CompareFunctionData data = {.query = normalized_query, .fuzzy = fuzzy};
+    g_array_sort_with_data(associations, compare_function, &data);
     free(normalized_query.data);
   }
 

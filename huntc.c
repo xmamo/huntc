@@ -119,7 +119,7 @@ huntc_compute_associations(CXTranslationUnit translation_unit, GArray* associati
 }
 
 size_t
-huntc_distance(HuntcString a, HuntcString b) {
+huntc_distance(HuntcString a, HuntcString b, bool fuzzy) {
   if (b.length < a.length) {
     HuntcString t = a;
     a = b;
@@ -133,8 +133,14 @@ huntc_distance(HuntcString a, HuntcString b) {
   size_t* row0 = rows + (b.length + 1) * 0;
   size_t* row1 = rows + (b.length + 1) * 1;
 
-  for (size_t ci = 0; ci <= b.length; ++ci) {
-    row0[ci] = ci;
+  if (fuzzy) {
+    for (size_t ci = 0; ci <= b.length; ++ci) {
+      row0[ci] = 0;
+    }
+  } else {
+    for (size_t ci = 0; ci <= b.length; ++ci) {
+      row0[ci] = ci;
+    }
   }
 
   for (size_t ri = 1;; ++ri) {
@@ -162,8 +168,9 @@ huntc_distance(HuntcString a, HuntcString b) {
 
 void
 huntc_parse_arguments(
-  int* argc, char*** argv, char** query, bool* libc, char** format, GError** error) {
+  int* argc, char*** argv, char** query, bool* libc, bool* fuzzy, char** format, GError** error) {
   gboolean c = *libc;
+  gboolean f = *fuzzy;
 
   const GOptionEntry entries[] = {
     {
@@ -185,8 +192,17 @@ huntc_parse_arguments(
       .arg_description = NULL,
     },
     {
-      .long_name = "format",
+      .long_name = "fuzzy",
       .short_name = 'f',
+      .flags = G_OPTION_FLAG_NONE,
+      .arg = G_OPTION_ARG_NONE,
+      .arg_data = &f,
+      .description = NULL,
+      .arg_description = NULL,
+    },
+    {
+      .long_name = "format",
+      .short_name = 'F',
       .flags = G_OPTION_FLAG_NONE,
       .arg = G_OPTION_ARG_STRING,
       .arg_data = format,
@@ -199,14 +215,14 @@ huntc_parse_arguments(
   GOptionContext* context = g_option_context_new(NULL);
   g_option_context_add_main_entries(context, entries, NULL);
 
-  {
-    GError* e = NULL;
-    g_option_context_parse(context, argc, argv, &e);
-    *libc = c;
+  GError* e = NULL;
+  g_option_context_parse(context, argc, argv, &e);
 
-    if (e != NULL) {
-      g_propagate_error(error, e);
-    }
+  *libc = c;
+  *fuzzy = f;
+
+  if (e != NULL) {
+    g_propagate_error(error, e);
   }
 
   g_option_context_free(context);
